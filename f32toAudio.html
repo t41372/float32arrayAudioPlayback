@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Audio Playback from Float32Array</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+            textarea {
+                width: 100%;
+                height: 150px;
+            }
+            button,
+            input[type="number"] {
+                margin-top: 10px;
+                padding: 10px;
+                font-size: 16px;
+            }
+            label {
+                margin-top: 10px;
+                display: block;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Float32Array Audio Playback</h1>
+        <p>
+            Paste your Float32Array (array or object format) below and click
+            "Play Audio".
+        </p>
+
+        <textarea
+            id="arrayInput"
+            placeholder="Paste your Float32Array here"
+        ></textarea>
+        <br />
+
+        <label for="playbackRate">Playback Speed (1.0 = Normal speed):</label>
+        <input
+            type="number"
+            id="playbackRate"
+            value="1.0"
+            step="0.1"
+            min="0.1"
+            max="4.0"
+        />
+
+        <label for="sampleRate">Sample Rate (Hz, e.g., 44100):</label>
+        <input
+            type="number"
+            id="sampleRate"
+            value="44100"
+            step="100"
+            min="1000"
+        />
+
+        <button onclick="playAudio()">Play Audio</button>
+
+        <script>
+            function playAudio() {
+                try {
+                    // Get the input from the text area and parse it as JSON
+                    const input = document.getElementById("arrayInput").value;
+                    const parsedData = JSON.parse(input);
+
+                    // Check if the parsed data is an object with numerical keys
+                    let floatArray;
+                    if (
+                        !Array.isArray(parsedData) &&
+                        typeof parsedData === "object"
+                    ) {
+                        floatArray = new Float32Array(
+                            Object.keys(parsedData).length,
+                        );
+                        for (let key in parsedData) {
+                            if (parsedData.hasOwnProperty(key) && !isNaN(key)) {
+                                floatArray[parseInt(key)] = parsedData[key];
+                            }
+                        }
+                    } else if (Array.isArray(parsedData)) {
+                        floatArray = new Float32Array(parsedData);
+                    } else {
+                        throw new Error("Invalid format");
+                    }
+
+                    // Get the playback rate and sample rate from user input
+                    const playbackRate = parseFloat(
+                        document.getElementById("playbackRate").value,
+                    );
+                    const sampleRate = parseInt(
+                        document.getElementById("sampleRate").value,
+                    );
+
+                    // Create an AudioContext with the specified sample rate
+                    const audioContext = new (window.AudioContext ||
+                        window.webkitAudioContext)({ sampleRate });
+
+                    // Create an AudioBuffer to hold the data
+                    const audioBuffer = audioContext.createBuffer(
+                        1,
+                        floatArray.length,
+                        audioContext.sampleRate,
+                    );
+
+                    // Copy the Float32Array data into the AudioBuffer
+                    audioBuffer.copyToChannel(floatArray, 0);
+
+                    // Create a buffer source and set the buffer to the AudioBuffer
+                    const bufferSource = audioContext.createBufferSource();
+                    bufferSource.buffer = audioBuffer;
+
+                    // Adjust the playback rate
+                    bufferSource.playbackRate.value = playbackRate;
+
+                    // Connect the buffer source to the audio context destination (speakers)
+                    bufferSource.connect(audioContext.destination);
+
+                    // Start playing the audio
+                    bufferSource.start();
+                } catch (error) {
+                    alert(
+                        "Invalid input. Please make sure your input is a valid JSON array or object with numerical keys.",
+                    );
+                    console.error("Error playing audio:", error);
+                }
+            }
+        </script>
+    </body>
+</html>
